@@ -343,7 +343,7 @@ int memory_migrate(vmi_instance_t vmi,addr_t old_addr ,addr_t new_addr,int size)
 int findpointer(vmi_instance_t vmi,addr_t pointer,int size){
 	int count = 0;
 	addr_t current_addr = 0;
-	addr_t end_addr =  vmi_get_max_physical_address(vmi);
+	addr_t end_addr =  vmi_get_memsize(vmi);
 	uint64_t value;
 	status_t status;
 	while(current_addr < end_addr){
@@ -380,7 +380,7 @@ int findinsidepointer(vmi_instance_t vmi,addr_t pointer ,int size){
 
 void modifyinodecache(vmi_instance_t vmi,addr_t pointer){    
 	addr_t current_addr = 0;
-	addr_t end_addr = vmi_get_max_physical_address(vmi);
+	addr_t end_addr = vmi_get_memsize(vmi);
 	addr_t inode_cache_pa = 0;
 	status_t status;
 	uint64_t value;
@@ -409,7 +409,7 @@ void modifyinodecache(vmi_instance_t vmi,addr_t pointer){
 
 void modifystruct(vmi_instance_t vmi,addr_t pointer){
 	addr_t current_addr = 0;
-	addr_t end_addr = vmi_get_max_physical_address(vmi);
+	addr_t end_addr = vmi_get_memsize(vmi);
 	status_t status;
 	uint64_t value;
 	addr_t startpa = 0;
@@ -531,7 +531,7 @@ void inode_migrate(vmi_instance_t vmi,addr_t inode,addr_t new_addr){
 
 	//修改所有file.f_imapping指针
 	current_read_addr = 0;
-	current_write_addr = vmi_get_max_physical_address(vmi);
+	current_write_addr = vmi_get_memsize(vmi);
 	while(current_read_addr < current_write_addr){
 		vmi_read_64_pa(vmi,current_read_addr,&value);
 		if(value == (inode+ 0x150)){
