@@ -317,7 +317,7 @@ int memory_migrate(vmi_instance_t vmi,addr_t old_addr ,addr_t new_addr,int size)
 	//搜索所有指向该结构体指针，并修改指向新的地址
 	count = 0;
 	addr_t current_addr = 0;
-	addr_t end_addr = vmi_get_max_physical_address(vmi);
+	addr_t end_addr = vmi_get_memsize(vmi);
 	uint64_t offset;
 	printf("the begin addr is %lx,and the end addr is %lx\n",current_addr,end_addr);
 
