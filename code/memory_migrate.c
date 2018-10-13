@@ -75,13 +75,14 @@ int main(int argc,char **argv){
 	addr_t new_addr = 0;
 	scanf("%lx",&new_addr);
 	printf("the input new_addr is %lx \n",new_addr);
-	if(VMI_FAILURE ==vmi_init_complete(&vmi,name,VMI_INIT_DOMAINNAME,NULL,VMI_CONFIG_GLOBAL_FILE_ENTRY,NULL,NULL)){
+	if(VMI_FAILURE == vmi_init(&vmi,VMI_AUTO | VMI_INIT_COMPLETE, name)){
 		printf("failed to init the library \n");
 		return 1;
 	}
 
-	if(VMI_FAILURE == vmi_get_offset(vmi,"linux_tasks",&tasks_offset)) goto error_exit;
-	if(VMI_FAILURE == vmi_get_offset(vmi,"linux_name",&name_offset)) goto error_exit;
+
+	tasks_offset = vmi_get_offset(vmi,"linux_tasks");
+	name_offset = vmi_get_offset(vmi,"linux_name");
 	
 	if(vmi_pause_vm(vmi) != VMI_SUCCESS){
 		printf("Failed to pause vm\n");
@@ -90,7 +91,8 @@ int main(int argc,char **argv){
 
 	int choice = -1;
 	
-	if(VMI_FAILURE == vmi_translate_ksym2v(vmi,"init_task",&list_head)) goto error_exit;
+	list_head = vmi_translate_ksym2v(vmi,"init_task");
+
 	list_head += tasks_offset;
 	
 	printf("please input the procname:\n");
