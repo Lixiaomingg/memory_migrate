@@ -10,7 +10,7 @@ int init_hello_module(void)
     printk("the memory start addr is %p\n",&tmp[0]);
     printk("the memory end addr is %p\n",&tmp[191]);
     //vaddr = vmalloc(1024);
-    vaddr = kmalloc(1024,GFP_KERNEL);
+    vaddr = kmalloc(32*4096,GFP_KERNEL);
     if(!vaddr){
     	printk("lihuhua:failed to kmalloc\n");
     }else{
