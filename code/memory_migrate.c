@@ -97,7 +97,7 @@ int main(int argc,char **argv){
 	
 	printf("please input the procname:\n");
 	scanf("%s",procname);
-	printf("the input procname is %s",procname);
+	printf("the input procname is %s\n",procname);
 
 	mainprocess = findprocess(vmi,list_head,procname);
 	if(mainprocess == 0) {
