@@ -84,6 +84,7 @@ int main(int argc,char **argv){
 	tasks_offset = vmi_get_offset(vmi,"linux_tasks");
 	name_offset = vmi_get_offset(vmi,"linux_name");
 	
+
 	if(vmi_pause_vm(vmi) != VMI_SUCCESS){
 		printf("Failed to pause vm\n");
 		goto error_exit;
