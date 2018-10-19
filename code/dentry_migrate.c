@@ -240,8 +240,13 @@ status_t get_dentry_addr(vmi_instance_t vmi, struct fdtable fdt_addrs[MAX_FDT_CO
 
 
 status_t migrate_dentry(vmi_instance_t vmi,addr_t dentry_addrs[MAX_DENTRY_COUNT]){
+    printf("please input migrate count(<682):\n");
+    scanf("%d",&migrate_count);
     return VMI_SUCCESS;
 }
 status_t migrate_fdt(vmi_instance_t vmi,struct fdtable fdt_addrs[MAX_FDT_COUNT]){
+    printf("please input migrate count(<256):\n");
+    scanf("%d",&migrate_count);
     return VMI_SUCCESS;
+    
 }
