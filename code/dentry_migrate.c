@@ -75,9 +75,9 @@ int main(int argc,char **argv){
     }
 
     for(i = 0;i<fdt_count;i++){
-        printf("%lx %d\n",fdt_addrs[i].addr,fdt_addrs[i].next_fd);
+         printf("%lx %d \n",fdt_addrs[i].addr,fdt_addrs[i].next_fd);
     }
-
+    
 
 
 
@@ -94,7 +94,6 @@ status_t get_fdt_addr(vmi_instance_t vmi,struct fdtable addrs[MAX_COUNT]){
     addr_t next_list_entry;
     addr_t current_process;
     addr_t files;
-    addr_t fdtable_struct;
     addr_t fdt;
     fdt_count = 0;
 
@@ -104,48 +103,51 @@ status_t get_fdt_addr(vmi_instance_t vmi,struct fdtable addrs[MAX_COUNT]){
 
     }
     list_head += tasks_offset;
-    
+    current_list_entry = list_head;
+
     if(VMI_FAILURE == vmi_read_addr_va(vmi,current_list_entry,0,&next_list_entry)){
         printf("failed to read next pointer in loop at %lx\n",current_list_entry);
         return VMI_FAILURE; 
     }
-    
+
     while(1){
         current_process = current_list_entry - tasks_offset;
         if(VMI_FAILURE == vmi_read_addr_va(vmi,current_process+0x590,0,&files)){
             printf("faild to read files address\n");
-            return VMI_FAILURE;
-        }
-
-        if(VMI_FAILURE == vmi_read_addr_va(vmi,files+0x8,0,&fdtable_struct)){
-            printf("faild to read fdtable_struct address\n");
-            return VMI_FAILURE;
+            goto update_current_entry;
         }
 
         //获取next_fd
         uint32_t temp;
         if(VMI_FAILURE == vmi_read_32_va(vmi,files+0x44,0,&temp)){
             printf("faild to read next_fd\n");
-            return VMI_FAILURE;
-        }else{
-            addrs[fdt_count].next_fd = temp;
+            goto update_current_entry;
         }
 
         //获取fdt数组首地址
-        if(VMI_FAILURE == vmi_read_addr_va(vmi,fdtable_struct+0x8,0,&fdt)){
+        if(VMI_FAILURE == vmi_read_addr_va(vmi,files+0x18,0,&fdt)){
             printf("faild to read fdt\n");
-            return VMI_FAILURE;
+            goto update_current_entry;
         }else{
-            addrs[fdt_count].addr = fdt;
-            fdt_count++;
+            if(temp){
+                addrs[fdt_count].next_fd = temp;
+                addrs[fdt_count].addr = fdt;
+                fdt_count++;
+            }else {
+                goto update_current_entry;
+            }
         }
 
+update_current_entry:
         current_list_entry = next_list_entry;
         if(VMI_FAILURE == vmi_read_addr_va(vmi,current_list_entry,0,&next_list_entry)){
             printf("faild to read next pointer in loop %lx\n",current_list_entry);
             return VMI_FAILURE;
         }
+
+        //增加跳出循环条件
         if(current_list_entry == list_head) break;
+        if(fdt_count == MAX_COUNT) break;
 
     }
     return VMI_SUCCESS;
