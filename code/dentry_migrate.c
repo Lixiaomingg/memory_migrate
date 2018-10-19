@@ -23,8 +23,9 @@
 unsigned long tasks_offset = 0;
 unsigned long name_offset = 0;
 
-//迁移数量
+//迁移数量和迁移目标地址
 int migrate_count;
+addr_t migrate_addr;
 
 //实际检测到fdt和dentry数量
 int fdt_count;
@@ -35,8 +36,13 @@ struct fdtable{
     int next_fd;
 };
 
+//搜寻待迁移的dentry结构体和fdt结构体
 status_t get_dentry_addr(vmi_instance_t vmi,struct fdtable fdt_addrs[MAX_FDT_COUNT],addr_t dentry_addrs[MAX_DENTRY_COUNT]);
 status_t get_fdt_addr(vmi_instance_t vmi,struct fdtable addrs[MAX_FDT_COUNT]);
+
+//针对dentry结构体和fdt进行迁移
+status_t migrate_dentry(vmi_instance_t vmi,addr_t dentry_addrs[MAX_DENTRY_COUNT]);
+status_t migrate_fdt(vmi_instance_t vmi,struct fdtable fdt_addrs[MAX_FDT_COUNT]);
 
 
 int main(int argc,char **argv){
@@ -53,9 +59,8 @@ int main(int argc,char **argv){
 
     name = argv[1];
     
-    printf("请输入需要迁移的dentry数量（0／10／20／30／40）\n");
-    scanf("%d",&migrate_count);
- 
+    
+
     if(VMI_FAILURE ==
             vmi_init_complete(&vmi,name,VMI_INIT_DOMAINNAME,NULL,
                                 VMI_CONFIG_GLOBAL_FILE_ENTRY,NULL,NULL)){
@@ -90,6 +95,14 @@ int main(int argc,char **argv){
         goto error_exit;
     }
     printf("search task of dentry is finished ,the dentry_count is %d\n",dentry_count);    
+
+    printf("please input migrate count:\n");
+    scanf("%d",&migrate_count);
+
+    printf("please input migrate start addr:\n");
+    scanf("%lx",&migrate_addr);
+
+    
 
 error_exit:
     vmi_resume_vm(vmi);
@@ -204,3 +217,10 @@ status_t get_dentry_addr(vmi_instance_t vmi, struct fdtable fdt_addrs[MAX_FDT_CO
 
 }
 
+
+status_t migrate_dentry(vmi_instance_t vmi,addr_t dentry_addrs[MAX_DENTRY_COUNT]){
+    return VMI_SUCCESS;
+}
+status_t migrate_fdt(vmi_instance_t vmi,struct fdtable fdt_addrs[MAX_FDT_COUNT]){
+    return VMI_SUCCESS;
+}
