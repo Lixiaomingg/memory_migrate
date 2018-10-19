@@ -10,6 +10,7 @@
 #include <stdlib.h>
 
 #include <libvmi/libvmi.h>
+#include <libvmi/events.h>
 #include <string.h>
 #include <error.h>
 #include <sys/mman.h>
@@ -25,11 +26,12 @@
 
 addr_t mem_vaddr;
 addr_t mem_paddr;
-vmi_event_t mem_event;
+unsigned long start_page;
+vmi_event_t mem_event[MAX_PAGE_NUM];
 
-void mem_event_callback(vmi_instance_t vmi, vmi_event_t *event){
+event_response_t mem_event_callback(vmi_instance_t vmi, vmi_event_t *event){
     printf("mem_event callback\n");
-    vmi_clear_event(vmi,&mem_event);
+    vmi_clear_event(vmi,event,NULL);
 }
 
 static int interrupted = 0;
@@ -41,6 +43,7 @@ int main(int argc,char **argv){
     vmi_instance_t vmi = NULL;
     status_t status = VMI_SUCCESS;
     struct sigaction act;
+    int i;
 
     char *name = NULL;
     vmi_pid_t pid = -1;
@@ -62,7 +65,9 @@ int main(int argc,char **argv){
     sigaction(SIGALRM,&act,NULL);
 
     //初始化libvmi库
-    if(vmi_init(&vmi, VMI_XEN | VMI_INIT_COMPLETE | VMI_INIT_EVENTS , name) == VMI_FAILURE){
+    if(VMI_FAILURE == 
+            vmi_init_complete(&vmi,name,VMI_INIT_DOMAINNAME | VMI_INIT_EVENTS,
+                                NULL,VMI_CONFIG_GLOBAL_FILE_ENTRY,NULL,NULL)){
         printf("libvmi 库文件初始化失败!\n");
         if(vmi != NULL){
             vmi_destroy(vmi);
@@ -77,22 +82,24 @@ int main(int argc,char **argv){
     scanf("%lx",&mem_vaddr);
     printf("输入的线性地址为：%lx\n",mem_vaddr);
 
-    mem_paddr = vmi_translate_kv2p(vmi,mem_vaddr);
+    vmi_translate_kv2p(vmi,mem_vaddr,&mem_paddr);
     printf("线性地址转换后的物理地址为：%lx",mem_paddr);
+    start_page = mem_paddr >> 12;
 
     //生成内存页监听事件
-    memset(&mem_event,0,sizeof(vmi_event_t));
-    mem_event.type = VMI_EVENT_MEMORY;
-    mem_event.callback = mem_event_callback;
+    for (i = 0;i<MAX_PAGE_NUM;i++){
+        memset(&mem_event[i],0,sizeof(vmi_event_t));
+        mem_event[i].version = VMI_EVENTS_VERSION;
+        mem_event[i].type = VMI_EVENT_MEMORY;
+        mem_event[i].callback = mem_event_callback;
 
-
-    mem_event.mem_event.physical_address = mem_paddr;
-    mem_event.mem_event.npages = MAX_PAGE_NUM;
-    mem_event.mem_event.granularity = VMI_MEMEVENT_PAGE;
-    mem_event.mem_event.in_access = VMI_MEMACCESS_RW;
-
-    //注册监听事件
-    vmi_register_event(vmi,&mem_event);
+        mem_event[i].mem_event.gfn = start_page + i;
+        mem_event[i].mem_event.in_access = VMI_MEMACCESS_RW;
+        //注册内存监听事件
+        vmi_register_event(vmi,&mem_event[i]);
+    }
+    
+   
 
     //开始监听目标虚拟机
     while(!interrupted){
