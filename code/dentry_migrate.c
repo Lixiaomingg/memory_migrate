@@ -46,13 +46,22 @@ int main(int argc,char **argv){
     printf("请输入需要迁移的dentry数量（0／10／20／30／40）\n");
     scanf("%d",&migrate_count);
  
-    if(VMI_FAILURE == vmi_init(&vmi,VMI_AUTO | VMI_INIT_COMPLETE,name)){
+    if(VMI_FAILURE ==
+            vmi_init_complete(&vmi,name,VMI_INIT_DOMAINNAME,NULL,
+                                VMI_CONFIG_GLOBAL_FILE_ENTRY,NULL,NULL)){
         printf("初始化library失败\n");
         return 1;
     }
     
-    tasks_offset = vmi_get_offset(vmi,"linux_tasks");
-    name_offset = vmi_get_offset(vmi,"linux_name");
+    if(VMI_FAILURE == vmi_get_offset(vmi,"linux_tasks",&tasks_offset)){
+        printf("获取linux_tasks偏移出错\n");
+        goto error_exit;
+    }
+
+    if(VMI_FAILURE == vmi_get_offset(vmi,"linux_name",&name_offset)){
+        printf("获取linux_name偏移出错\n");
+        goto error_exit;
+    }
   
     if(vmi_pause_vm(vmi) == VMI_FAILURE){
         printf("failed to pause vm\n");
@@ -89,7 +98,11 @@ status_t get_fdt_addr(vmi_instance_t vmi,struct fdtable addrs[MAX_COUNT]){
     addr_t fdt;
     fdt_count = 0;
 
-    list_head = vmi_translate_ksym2v(vmi,"init_task");
+    if(VMI_FAILURE == vmi_translate_ksym2v(vmi,"init_task",&list_head)){
+        printf("获取init_task地址出错\n");
+        return VMI_FAILURE;
+
+    }
     list_head += tasks_offset;
     
     if(VMI_FAILURE == vmi_read_addr_va(vmi,current_list_entry,0,&next_list_entry)){
