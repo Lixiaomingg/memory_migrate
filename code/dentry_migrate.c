@@ -1,7 +1,7 @@
 /**
  * dentry 结构体迁移实验   
  * 搜索目标虚拟机内存空间，迁移特定数量的dentry结构体
- * ffffffff81d16e30 d dentry_hashtable
+ * ffff8800021c0000
 */
 
 #include <stdio.h>
@@ -16,9 +16,11 @@
 
 //128KB/512B
 #define MAX_FDT_COUNT 256
+#define FDT_BYTE 512
 
 //128KB/192B
 #define MAX_DENTRY_COUNT 682
+#define DENTRY_BYTE 192
 
 unsigned long tasks_offset = 0;
 unsigned long name_offset = 0;
@@ -44,6 +46,10 @@ status_t get_fdt_addr(vmi_instance_t vmi,struct fdtable addrs[MAX_FDT_COUNT]);
 status_t migrate_dentry(vmi_instance_t vmi,addr_t dentry_addrs[MAX_DENTRY_COUNT]);
 status_t migrate_fdt(vmi_instance_t vmi,struct fdtable fdt_addrs[MAX_FDT_COUNT]);
 
+status_t memory_copy(vmi_instance_t vmi,addr_t old_addr,addr_t new_addr,int size);
+status_t check_pointer(vmi_instance_t vmi,addr_t current_addr,uint64_t value,addr_t dentry_addrs[MAX_DENTRY_COUNT],int max_count);
+
+int modify_count = 0;
 
 int main(int argc,char **argv){
     vmi_instance_t vmi;
@@ -240,13 +246,83 @@ status_t get_dentry_addr(vmi_instance_t vmi, struct fdtable fdt_addrs[MAX_FDT_CO
 
 
 status_t migrate_dentry(vmi_instance_t vmi,addr_t dentry_addrs[MAX_DENTRY_COUNT]){
+    int max_count,i;
+
     printf("please input migrate count(<682):\n");
     scanf("%d",&migrate_count);
+    
+    //内存拷贝
+    max_count = (migrate_count < dentry_count) ? migrate_count : dentry_count;
+    for(i = 0;i<max_count;i++){
+        if(VMI_FAILURE == memory_copy(vmi,dentry_addrs[i],migrate_addr+DENTRY_BYTE*i,DENTRY_BYTE)){
+            printf("migrate dentry failure\n");
+            return VMI_FAILURE;
+        }
+    }
+    printf("dentry memory copy all is finished\n");
+
+    //修改相关指针
+    addr_t current_addr = 0;
+    addr_t end_addr = vmi_get_memsize(vmi);
+    uint64_t value;
+
+    while(current_addr < end_addr){
+        vmi_read_64_pa(vmi,current_addr,&value);
+        if(VMI_FAILURE == check_pointer(vmi,current_addr,value,dentry_addrs,max_count)){
+            printf("modify pointer failure\n");
+            return VMI_FAILURE;
+        }
+        current_addr += 8;
+    }
+    printf("modify pointer success,the count is %d\n",modify_count);
+
     return VMI_SUCCESS;
 }
+
+
 status_t migrate_fdt(vmi_instance_t vmi,struct fdtable fdt_addrs[MAX_FDT_COUNT]){
     printf("please input migrate count(<256):\n");
     scanf("%d",&migrate_count);
     return VMI_SUCCESS;
     
+}
+
+//内存拷贝
+status_t memory_copy(vmi_instance_t vmi,addr_t old_addr,addr_t new_addr,int size){
+    int count;
+    uint64_t value;
+    addr_t current_read_addr = old_addr;
+    addr_t current_write_addr = new_addr;
+    while(count < size){
+        if(VMI_FAILURE == vmi_read_64_va(vmi,current_read_addr,0,&value)){
+            printf("failed to read from the old addr\n");
+            return VMI_FAILURE;
+        }
+        if(VMI_FAILURE == vmi_write_64_va(vmi,current_write_addr,0,&value)){
+            printf("faild to write to the new addr\n");
+            return VMI_FAILURE;
+        }
+        current_read_addr +=8;
+        current_write_addr +=8;
+        count += 8 ;
+    }
+    return VMI_SUCCESS;
+}
+
+//检查相关内容是否为需要修改的指针
+status_t check_pointer(vmi_instance_t vmi,addr_t current_addr,uint64_t value,addr_t dentry_addrs[MAX_DENTRY_COUNT],int max_count){
+    int i;
+    uint64_t offset;
+    for(i = 0;i<max_count;i++){
+        if(value >= dentry_addrs[i] && value < (dentry_addrs[i] + DENTRY_BYTE)){
+            offset = value - dentry_addrs[i];
+            value = migrate_addr+DENTRY_BYTE*i + offset;
+            if(VMI_FAILURE == vmi_write_64_pa(vmi,current_addr,&value)){
+                return VMI_FAILURE;
+            }
+            modify_count++;
+            return VMI_SUCCESS;
+        }
+    }
+    return VMI_SUCCESS;
 }
