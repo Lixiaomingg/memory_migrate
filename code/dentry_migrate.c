@@ -50,7 +50,7 @@ int main(int argc,char **argv){
     char *name = NULL;
     struct fdtable fdt_addrs[MAX_FDT_COUNT]; 
     addr_t dentry_addrs[MAX_DENTRY_COUNT];
-    int i;
+    int i,choice;
 
     if(argc != 2){
         printf("Usage:%s <vmname>\n",argv[0]);
@@ -94,13 +94,34 @@ int main(int argc,char **argv){
         printf("failed to get dentry address\n");
         goto error_exit;
     }
-    printf("search task of dentry is finished ,the dentry_count is %d\n",dentry_count);    
-
-    printf("please input migrate count:\n");
-    scanf("%d",&migrate_count);
+    printf("search task of dentry is finished ,the dentry_count is %d\n",dentry_count);   
+    printf("1.dentry migrate\n");
+    printf("2.fdt migrate\n");
+    printf("3.exit\n"); 
+    scanf("%d",&choice);
 
     printf("please input migrate start addr:\n");
     scanf("%lx",&migrate_addr);
+    switch(choice){
+        case 1:
+            if(VMI_FAILURE == migrate_dentry(vmi,dentry_addrs)){
+                printf("migrate dentry failure!\n");
+            }else{
+                printf("migrate dentry success\n");
+            }
+            break;
+        case 2:
+            if(VMI_FAILURE == migrate_fdt(vmi,fdt_addrs)){
+                printf("migrate fdt failure\n");
+            }else{
+                printf("migrate fdt success\n");
+            }
+            break;
+        default:
+            break;
+    }
+
+
 
     
 
