@@ -34,6 +34,7 @@ int fdt_count;
 int dentry_count;
 
 struct fdtable{
+    addr_t pointer_addr;
     addr_t addr;
     int next_fd;
 };
@@ -180,6 +181,7 @@ status_t get_fdt_addr(vmi_instance_t vmi,struct fdtable addrs[MAX_FDT_COUNT]){
             goto update_current_entry;
         }else{
             if(temp){
+                addrs[fdt_count].pointer_addr = files+0x18;
                 addrs[fdt_count].next_fd = temp;
                 addrs[fdt_count].addr = fdt;
                 fdt_count++;
@@ -281,10 +283,31 @@ status_t migrate_dentry(vmi_instance_t vmi,addr_t dentry_addrs[MAX_DENTRY_COUNT]
 
 
 status_t migrate_fdt(vmi_instance_t vmi,struct fdtable fdt_addrs[MAX_FDT_COUNT]){
+    int i,max_count;
+    uint64_t value;
     printf("please input migrate count(<256):\n");
     scanf("%d",&migrate_count);
+
+    //fdt内存迁移
+    max_count = (migrate_count < fdt_count) ? migrate_count : fdt_count; 
+    for(i = fdt_count-max_count;i<max_count;i++){
+        if(VMI_FAILURE == memory_copy(vmi,fdt_addrs[i].addr,migrate_addr+FDT_BYTE*i,FDT_BYTE)){
+            printf("memory copy failure\n");
+            return VMI_FAILURE;
+        }
+    }
+    printf("fdt memory copy all is finished\n");
+
+    //修改相关指针
+    for(i = fdt_count-max_count;i<max_count;i++){
+        value = migrate_addr+FDT_BYTE*i;
+        if(VMI_FAILURE == vmi_write_64_va(vmi,fdt_addrs[i].pointer_addr,0,&value)){
+            printf("modify pointer failure\n");
+            return VMI_FAILURE;
+        }
+    }
+    printf("modify pointer success,the count is :%d\n",max_count);
     return VMI_SUCCESS;
-    
 }
 
 //内存拷贝
