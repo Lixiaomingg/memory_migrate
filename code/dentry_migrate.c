@@ -47,6 +47,11 @@ status_t get_fdt_addr(vmi_instance_t vmi,struct fdtable addrs[MAX_FDT_COUNT]);
 status_t migrate_dentry(vmi_instance_t vmi,addr_t dentry_addrs[MAX_DENTRY_COUNT]);
 status_t migrate_fdt(vmi_instance_t vmi,struct fdtable fdt_addrs[MAX_FDT_COUNT]);
 
+//将相应的结构体地址信息输出到文件中
+status_t output_dentry(int count,addr_t dentry_addrs[MAX_DENTRY_COUNT]);
+status_t output_fdt(int count,struct fdtable fdt_addrs[MAX_FDT_COUNT]);
+
+//内存迁移用到的子函数
 status_t memory_copy(vmi_instance_t vmi,addr_t old_addr,addr_t new_addr,int size);
 status_t check_pointer(vmi_instance_t vmi,addr_t current_addr,uint64_t value,addr_t dentry_addrs[MAX_DENTRY_COUNT],int max_count);
 
@@ -102,22 +107,47 @@ int main(int argc,char **argv){
         goto error_exit;
     }
     printf("search task of dentry is finished ,the dentry_count is %d\n",dentry_count);   
-    printf("1.dentry migrate\n");
-    printf("2.fdt migrate\n");
-    printf("3.exit\n"); 
+    printf("1.output dentry addrs to a file\n");
+    printf("2.dentry migrate\n");
+    printf("3.output fdt addrs to a file\n");
+    printf("4.fdt migrate\n");
+    printf("5.exit\n"); 
     scanf("%d",&choice);
 
-    printf("please input migrate start addr:\n");
-    scanf("%lx",&migrate_addr);
+    int max_num;
     switch(choice){
         case 1:
+            printf("please input migrate count:\n");
+            scanf("%d",&migrate_count);
+            max_num = (migrate_count < dentry_count) ? migrate_count : dentry_count;
+            if(VMI_FAILURE == output_dentry(max_num,dentry_addrs)){
+                printf("output dentry addrs to a file failed\n");
+            }else{
+                printf("output dentry addrs to a file success\n");
+            }
+            break;
+        case 2:
+            printf("please input migrate start addr:\n");
+            scanf("%lx",&migrate_addr);
             if(VMI_FAILURE == migrate_dentry(vmi,dentry_addrs)){
                 printf("migrate dentry failure!\n");
             }else{
                 printf("migrate dentry success\n");
             }
             break;
-        case 2:
+        case 3:
+            printf("please input migrate count:\n");
+            scanf("%d",&migrate_count);
+            max_num = (migrate_count < dentry_count) ? migrate_count : dentry_count;
+            if(VMI_FAILURE == output_fdt(max_num,fdt_addrs)){
+                printf("output fdt addrs to a file failed\n");
+            }else{
+                printf("output fdt addrs to a file success\n");
+            }
+            break;
+        case 4:
+            printf("please input migrate start addr:\n");
+            scanf("%lx",&migrate_addr);
             if(VMI_FAILURE == migrate_fdt(vmi,fdt_addrs)){
                 printf("migrate fdt failure\n");
             }else{
@@ -214,7 +244,7 @@ status_t get_dentry_addr(vmi_instance_t vmi, struct fdtable fdt_addrs[MAX_FDT_CO
     addr_t dentry;
 
     dentry_count = 0;
-    bool flag = true;
+    bool flag;
 
     for(i=0;i<fdt_count;i++){
         for(j=0;j< fdt_addrs[i].next_fd;j++){
@@ -223,16 +253,19 @@ status_t get_dentry_addr(vmi_instance_t vmi, struct fdtable fdt_addrs[MAX_FDT_CO
                     //读取dentry地址
                     if(VMI_SUCCESS == vmi_read_addr_va(vmi,file+0x18,0,&dentry)){
                         //判断dentry有无重复
+                        flag = true;
                         for(k=0;k<dentry_count;k++){
                             if(dentry == dentry_addrs[k]){
                                 flag = false;
                                 break;
                             }
                         }
-
                         //无重复，则添加之dentry数组中
-                        dentry_addrs[dentry_count] = dentry;
-                        dentry_count++;
+                        if(flag){
+                            dentry_addrs[dentry_count] = dentry;
+                            dentry_count++;    
+                        }
+                        
                         
                         //判断数组是否已满
                         if(dentry_count == MAX_DENTRY_COUNT) return VMI_SUCCESS;
@@ -347,5 +380,41 @@ status_t check_pointer(vmi_instance_t vmi,addr_t current_addr,uint64_t value,add
             return VMI_SUCCESS;
         }
     }
+    return VMI_SUCCESS;
+}
+
+//输出dentry结构体地址信息到文件中
+status_t output_dentry(int count,addr_t dentry_addrs[MAX_DENTRY_COUNT]){
+    FILE * fp = NULL;
+    int i;
+    fp = fopen("data/dentry_addrs.txt","w");
+    if(fp){
+        fprintf(fp,"%d\n",count);
+        for(i=0;i<dentry_count;i++){
+            fprintf(fp,"%lx\n",dentry_addrs[i]);
+        }
+    }else{
+        printf("open dentry_addrs.txt failed\n");
+        return VMI_FAILURE;
+    }
+    fclose(fp);
+    return VMI_SUCCESS;
+}
+
+//输出fdt结构体地址信息到文件中
+status_t output_fdt(int count,struct fdtable fdt_addrs[MAX_FDT_COUNT]){
+    FILE *fp = NULL;
+    int i;
+    fp = fopen("data/fdt_addrs.txt","w");
+    if(fp){
+        fprintf(fp,"%d\n",count);
+        for(i=0;i<fdt_count;i++){
+            fprintf(fp,"%lx\n",fdt_addrs[i].addr);
+        }
+    }else{
+        printf("open fdt_addrs.txt failed\n");
+        return VMI_FAILURE;
+    }
+    fclose(fp);
     return VMI_SUCCESS;
 }
