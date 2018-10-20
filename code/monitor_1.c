@@ -46,14 +46,12 @@ int main(int argc,char **argv){
     int i;
 
     char *name = NULL;
-    vmi_pid_t pid = -1;
     if(argc < 2){
         printf("Usage: monitor <name of VM>\n");
         exit(1);
     }
     //获取虚拟机名称
     name  = argv[1];
-    //获取pid
 
     
     act.sa_handler = close_handler;
@@ -116,5 +114,5 @@ int main(int argc,char **argv){
     //数据结构清理，程序退出
     vmi_destroy(vmi);
     return 0;
-   
+ 
 }
