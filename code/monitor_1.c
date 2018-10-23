@@ -29,9 +29,30 @@ addr_t mem_paddr;
 unsigned long start_page;
 vmi_event_t mem_event[MAX_PAGE_NUM];
 
+void print_event(vmi_event_t *event)
+{
+    printf("\tPAGE ACCESS: %c%c%c for GFN %"PRIx64" (offset %06"PRIx64") gla %016"PRIx64" (vcpu %u)\n",
+           (event->mem_event.out_access & VMI_MEMACCESS_R) ? 'r' : '-',
+           (event->mem_event.out_access & VMI_MEMACCESS_W) ? 'w' : '-',
+           (event->mem_event.out_access & VMI_MEMACCESS_X) ? 'x' : '-',
+           event->mem_event.gfn,
+           event->mem_event.offset,
+           event->mem_event.gla,
+           event->vcpu_id
+          );
+}
+
+event_response_t step_callback(vmi_instance_t vmi, vmi_event_t *event){
+    printf("Re-registering event\n");
+    vmi_register_event(vmi,event);
+    return 0;
+}
+
+
 event_response_t mem_event_callback(vmi_instance_t vmi, vmi_event_t *event){
-    printf("mem_event callback\n");
+    print_event(event);
     vmi_clear_event(vmi,event,NULL);
+    vmi_step_event(vmi,event,event->vcpu_id,1,step_callback);
 }
 
 static int interrupted = 0;
