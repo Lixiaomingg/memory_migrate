@@ -23,7 +23,12 @@
 vmi_event_t mem_event[MAX_EVENT_NUM];
 addr_t mem_addrs[MAX_EVENT_NUM];
 
+addr_t temp[1000];
+int index_temp = 0;
+
 int event_count;
+
+int lihuhua = 0;
 
 void print_event(vmi_event_t *event)
 {
@@ -46,6 +51,7 @@ event_response_t step_callback(vmi_instance_t vmi, vmi_event_t *event){
 
 event_response_t mem_event_callback(vmi_instance_t vmi, vmi_event_t *event){
     print_event(event);
+    lihuhua += 1;
     vmi_clear_event(vmi,event,NULL);
     vmi_step_event(vmi,event,event->vcpu_id,1,step_callback);
 }
@@ -95,6 +101,8 @@ int main(int argc,char **argv){
         printf("libvmi库文件初始化成功\n");
     }
 
+
+
     //从文件中读取目标结构体地址信息
     printf("请选择监控目标:\n");
     printf("1.dentry\n");
@@ -114,11 +122,20 @@ int main(int argc,char **argv){
     if(fp){
         fscanf(fp,"%d",&count);
         count = (count < MAX_EVENT_NUM) ? count : MAX_EVENT_NUM;
-        for(i=0;i<count;i++){
-            fscanf(fp,"%lx",&mem_addrs[i]);
+        // for(i=0;i<count;i++){
+        //     fscanf(fp,"%lx",&mem_addrs[i]);
+        // }
+
+        while(fscanf(fp,"%lx",&temp[index_temp]) != EOF){
+            index_temp ++;
         }
     }else{
         printf("open file failed\n");
+    }
+
+    //从temp 数组里面读取指定数量kernel object 到mem_addrs中
+    for(i = 0;i<count;i++){
+        mem_addrs[i] = temp[index_temp-1-i];
     }
 
     //生成内存页监听事件
@@ -148,6 +165,7 @@ int main(int argc,char **argv){
     }
 
     printf("监听任务完成！");
+    printf("%d\n",lihuhua);
 
 
     vmi_destroy(vmi);
